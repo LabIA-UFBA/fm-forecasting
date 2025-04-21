@@ -14,9 +14,11 @@ from sklearn.metrics import mean_absolute_percentage_error
 from sklearn.metrics import mean_absolute_error
 from loguru import logger as log
 import matplotlib.pyplot as plt
-from prophet import Prophet
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
+model_name = "ETS"
 
-log.add("Prophet.log")
+
+log.add(f"log/{model_name}.log")
 
 plt.style.use("seaborn-v0_8-whitegrid")
 
@@ -39,39 +41,26 @@ nodes = sb.columns
 
 scores_error = {'node': [], 'mae': [], 'mse': [], 'r2': [], 'mape': []}
 forecastings = {}
+sazonalidade =  7 * 40
 
 for node in tqdm(nodes):
 
     log.info(f"run node {node}")
 
-    serie = sbx[node].reset_index()
-    serie.columns = ['ds', 'y']  # formato Prophet
-    serie['cap'] = serie['y'].max() * 1.2  
-    serie['floor'] = 0   
+    serie_train = sbx[node]
+    serie_test = sby[node]
 
-    # modelo = Prophet(
-    #     yearly_seasonality=False,
-    #     weekly_seasonality=True,
-    #     daily_seasonality=False,
-    #     seasonality_mode='additive'  # ou 'multiplicative' se necessário
-    # )
+    modelo = ExponentialSmoothing(
+        serie_train,
+        #trend='add',                # ou 'mul' se for melhor
+        seasonal='add',             # ou 'mul'
+        seasonal_periods=sazonalidade
+    )
 
+    resultado = modelo.fit()
 
-    #modelo = Prophet()
-    modelo = Prophet(growth='logistic')
-    modelo.fit(serie)
-
-    # criar datas futuras para previsão
-    #future = modelo.make_future_dataframe(periods=pred_len, freq="30min")  # ajusta freq se necessário
-    
-    future = modelo.make_future_dataframe(periods=pred_len, freq='30min')
-    future['cap'] = serie['cap'].iloc[0]  # mesmo cap usado no treino
-    future['floor'] = 0
-
-    forecast = modelo.predict(future)
-
-    y_pred = forecast['yhat'].iloc[-pred_len:].values
-    y_true = sby[node].values
+    y_pred = resultado.forecast(steps=pred_len)
+    y_true = serie_test.values
 
     forecastings[f"pred_{node}"] = y_pred
     forecastings[f"true_{node}"] = y_true
@@ -83,10 +72,10 @@ for node in tqdm(nodes):
     scores_error['mape'].append(mean_absolute_percentage_error(y_true, y_pred))
 
 df_results = pd.DataFrame(scores_error)
-df_results["model"] = "Prophet"
-df_results.to_parquet(f"results/PROPHET-long-time.parquet", index=False)
+df_results["model"] = model_name
+df_results.to_parquet(f"results/{model_name}-long-time.parquet", index=False)
 
 df_forecastings = pd.DataFrame(forecastings)
-df_forecastings.to_parquet(f"results/forecasting-PROPHET-long-time.parquet", index=False)
+df_forecastings.to_parquet(f"results/forecasting-{model_name}-long-time.parquet", index=False)
 
-log.info("Done Prophet.")
+log.info(f"Done {model_name}.")
