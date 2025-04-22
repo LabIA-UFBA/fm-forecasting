@@ -72,7 +72,7 @@ for node in tqdm(nodes):
         start_P=0, max_P=2,
         start_Q=0, max_Q=2,
         D=None,            # auto determina o melhor D
-        m=24,              # frequência sazonal, ex: 24 para dados horários
+        m=40,              # frequência sazonal, ex: 24 para dados horários
         trace=True,
         error_action='ignore',
         suppress_warnings=True,

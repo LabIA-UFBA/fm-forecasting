@@ -16,7 +16,7 @@ from loguru import logger as log
 import matplotlib.pyplot as plt
 from prophet import Prophet
 
-log.add("Prophet.log")
+log.add("log/Prophet.log")
 
 plt.style.use("seaborn-v0_8-whitegrid")
 
@@ -32,17 +32,20 @@ warnings.filterwarnings('ignore')
 
 sb = pd.read_parquet("/home/marcos/loader_03-04_2024.parquet")
 
-sbx = sb.query("index <= '2024-03-31 23:59:59'")
-sby = sb.query("index > '2024-03-31 23:59:59'")
+# sbx = sb.query("index <= '2024-03-31 23:59:59'")
+# sby = sb.query("index > '2024-03-31 23:59:59'")
+sbx = sb.query("index <= '2024-04-30 23:59:59'")
+sby = sb.query("index  > '2024-04-30 23:59:59'")
+
+
 pred_len = abs(sbx.shape[0] - sb.shape[0])
 nodes = sb.columns
 
 scores_error = {'node': [], 'mae': [], 'mse': [], 'r2': [], 'mape': []}
 forecastings = {}
-targets = {}
 
 for node in tqdm(nodes):
-    targets[node] = []
+
     log.info(f"run node {node}")
 
     serie = sbx[node].reset_index()
@@ -83,27 +86,11 @@ for node in tqdm(nodes):
     scores_error['r2'].append(r2_score(y_true, y_pred))
     scores_error['mape'].append(mean_absolute_percentage_error(y_true, y_pred))
 
-    targets[node].append({"input": serie, 
-                          'true': y_true,
-                          'pred': y_pred,
-                          'node': node
-                         })
-
-
-#
-# save forecastings
-#
-with open(f'results/prophet-short-targets.pkl', 'wb') as f:
-    pickle.dump(targets, f)
-
-#
-# save results
-#
 df_results = pd.DataFrame(scores_error)
 df_results["model"] = "Prophet"
-df_results.to_parquet(f"results/PROPHET-long-time.parquet", index=False)
+df_results.to_parquet(f"results/PROPHET-short-time.parquet", index=False)
 
 df_forecastings = pd.DataFrame(forecastings)
-df_forecastings.to_parquet(f"results/forecasting-PROPHET-long-time.parquet", index=False)
+df_forecastings.to_parquet(f"results/forecasting-PROPHET-short-time.parquet", index=False)
 
 log.info("Done Prophet.")
