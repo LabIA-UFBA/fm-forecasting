@@ -30,7 +30,7 @@ This research uses the public transport database SUNT of the city of Salvador, B
 
 ### Chronos Forecasting
 
-### TimesFS Forecasting
+### TimesFM Forecasting
 
 ### TEMPO Forecasting
 
