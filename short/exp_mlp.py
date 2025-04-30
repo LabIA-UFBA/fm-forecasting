@@ -86,6 +86,8 @@ input_size = 40  # tamanho da janela de entrada
 train_points = limite_abril  # 1 mês
 future_steps = future_steps  
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+targets = {}
+
 
 for node in tqdm(nodes):
 
@@ -135,6 +137,14 @@ for node in tqdm(nodes):
     scores_error['mae'].append(mean_absolute_error(y_true, y_pred))
     scores_error['r2'].append(r2_score(y_true, y_pred))
     scores_error['mape'].append(mean_absolute_percentage_error(y_true, y_pred))
+
+    targets[node] = {"input":  X_train, 
+                     'true': y_true,
+                     'pred': y_pred}
+
+
+with open(f'results/mlp-short-time-targets.pkl', 'wb') as f:
+    pickle.dump(targets, f)
 
 df_results = pd.DataFrame(scores_error)
 df_results["model"] = "MLP"

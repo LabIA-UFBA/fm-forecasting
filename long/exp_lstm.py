@@ -98,7 +98,7 @@ seq_len = 40         # número de passos anteriores usados para prever
 train_points = limite_marco  # 1 mês
 future_steps = future_steps  # prever 2 meses
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
+targets = {}
 
 for node in tqdm(nodes):
 
@@ -148,6 +148,17 @@ for node in tqdm(nodes):
     scores_error['mae'].append(mean_absolute_error(y_true, y_pred))
     scores_error['r2'].append(r2_score(y_true, y_pred))
     scores_error['mape'].append(mean_absolute_percentage_error(y_true, y_pred))
+
+
+
+    targets[node] = {"input":  X_train, 
+                     'true': y_true,
+                     'pred': y_pred}
+
+
+with open(f'results/lstm-long-time-targets.pkl', 'wb') as f:
+    pickle.dump(targets, f)
+
 
 df_results = pd.DataFrame(scores_error)
 df_results["model"] = "LSTM"

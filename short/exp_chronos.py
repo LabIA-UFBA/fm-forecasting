@@ -56,7 +56,7 @@ pred_len = abs(sbx.shape[0] - sb.shape[0])
 nodes = sb.columns
 
 scores_error = {'node': [], 'mae': [], 'mse': [], 'r2': [], 'mape': []}
-
+targets = {}
 
 for node in tqdm(nodes):
 
@@ -85,6 +85,14 @@ for node in tqdm(nodes):
     scores_error['mae'].append(mean_absolute_error(y_true, y_pred))
     scores_error['r2'].append(r2_score(y_true, y_pred))
     scores_error['mape'].append(mean_absolute_percentage_error(y_true, y_pred))
+
+
+    targets[node] = {"input": sbx[node].values, 
+                     'true': y_true,
+                     'pred': y_pred}
+    
+with open(f'results/chronos-short-time-targets.pkl', 'wb') as f:
+    pickle.dump(targets, f)
 
 df_results = pd.DataFrame(scores_error)
 df_results["model"] = "cronos-BASE"

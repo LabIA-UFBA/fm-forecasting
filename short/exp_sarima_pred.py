@@ -25,11 +25,13 @@ from loguru import logger as log
 # plot
 import matplotlib.pyplot as plt
 # foundation model
-from chronos import ChronosPipeline
+from functools import reduce
+import itertools
+from statsmodels.tsa.statespace.sarimax import SARIMAX
 
-#log.add("sarima_long_time.log")
+log.add("sarima_short_time.log")
 
-
+import pmdarima as pm
 plt.style.use("seaborn-v0_8-whitegrid")
 
 SEED = 1345
@@ -46,9 +48,8 @@ warnings.filterwarnings('ignore')
 
 sb = pd.read_parquet("/home/marcos/loader_03-04_2024.parquet")
 
-sbx = sb.query("index <= '2024-03-31 23:59:59'")
-
-sby = sb.query("index > '2024-03-31 23:59:59'")
+sbx = sb.query("index <= '2024-04-30 23:59:59'")
+sby = sb.query("index  > '2024-04-30 23:59:59'")
 
 pred_len = abs(sbx.shape[0] - sb.shape[0])
 
@@ -59,25 +60,26 @@ targets = {}
 
 for node in tqdm(nodes):
 
-    log.info(f"run node {node}")
+    serie = sbx[node]
 
-    pipeline = ChronosPipeline.from_pretrained(
-    "amazon/chronos-t5-base",
-    device_map="cuda",  # use "cpu" for CPU inference and "mps" for Apple Silicon
-    torch_dtype=torch.bfloat16,
-    )
+    # save results
+    with open(f"sarima_fit_gs/{node}-grid-search-results.pkl", "rb") as f:
+        modelo_auto = pickle.load(f)
+    
+    modelo = SARIMAX(serie,
+                        order=modelo_auto.order,
+                        seasonal_order=modelo_auto.seasonal_order,
+                        enforce_stationarity=False,
+                        enforce_invertibility=False)
 
-    forecast = pipeline.predict(context=torch.tensor(sbx[node]),
-                            prediction_length=pred_len,
-                            limit_prediction_length=False,
-                            num_samples=1)
-    
-    y_hat = forecast.view(-1)
-    
-    
+
+    resultado = modelo.fit()
+    log.info(f"forecasting")
+    forecast = resultado.get_forecast(steps=pred_len)
+    media_prevista = forecast.predicted_mean
 
     y_true = sby[node].values
-    y_pred = y_hat.cpu().data.numpy()
+    y_pred = media_prevista
 
     scores_error['node'].append(node)
     scores_error['mse'].append(mean_squared_error(y_true, y_pred))
@@ -86,15 +88,16 @@ for node in tqdm(nodes):
     scores_error['mape'].append(mean_absolute_percentage_error(y_true, y_pred))
 
 
-    targets[node] = {"input": sbx[node].values, 
+    targets[node] = {"input":  serie, 
                      'true': y_true,
                      'pred': y_pred}
     
-with open(f'results/chronos-long-time-targets.pkl', 'wb') as f:
+with open(f'results/sarima-short-time-targets.pkl', 'wb') as f:
     pickle.dump(targets, f)
+
 
 df_results = pd.DataFrame(scores_error)
 df_results["model"] = "SARIMA"
-df_results.to_parquet(f"CRHONOS-long-time.parquet", index=False)
+df_results.to_parquet(f"results/SARIMA-short-time.parquet", index=False)
 
 log.info("Done.")

@@ -42,7 +42,7 @@ forecastings = {}
 targets = {}
 
 for node in tqdm(nodes):
-    targets[node] = []
+    # targets[node] = []
     log.info(f"run node {node}")
 
     serie = sbx[node].reset_index()
@@ -83,11 +83,10 @@ for node in tqdm(nodes):
     scores_error['r2'].append(r2_score(y_true, y_pred))
     scores_error['mape'].append(mean_absolute_percentage_error(y_true, y_pred))
 
-    targets[node].append({"input": serie, 
-                          'true': y_true,
-                          'pred': y_pred,
-                          'node': node
-                         })
+    targets[node] = {"input": serie, 
+                    'true': y_true,
+                    'pred': y_pred,
+                    'node': node}
 
 
 #
